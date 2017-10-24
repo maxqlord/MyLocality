@@ -28,6 +28,9 @@ import com.spotify.sdk.android.player.PlayerEvent;
 import com.spotify.sdk.android.player.Spotify;
 import com.spotify.sdk.android.player.SpotifyPlayer;
 
+//spotify account must only work for one user
+
+
 public class MainActivity extends AppCompatActivity implements
         SpotifyPlayer.NotificationCallback, ConnectionStateCallback {
 
@@ -53,7 +56,6 @@ public class MainActivity extends AppCompatActivity implements
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
 
 
         /*
@@ -271,15 +273,21 @@ public class MainActivity extends AppCompatActivity implements
         spotifyauth.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                /*Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://accounts.spotify.com"));
+                startActivity(browserIntent);*/
 
                 AuthenticationRequest.Builder builder = new AuthenticationRequest.Builder(CLIENT_ID,
                         AuthenticationResponse.Type.TOKEN,
                         REDIRECT_URI);
                 //spotify permissions
+                builder.setShowDialog(true);
                 builder.setScopes(new String[]{"streaming", "playlist-modify-private", "user-library-modify", "user-read-private"}); //permissions
                 AuthenticationRequest request = builder.build();
 
                 AuthenticationClient.openLoginActivity(MainActivity.this, REQUEST_CODE, request);
+
+
+
             }
         });
 
@@ -287,6 +295,9 @@ public class MainActivity extends AppCompatActivity implements
 
 
 
+    }
+    public void createPlaylist(){
+        //
     }
 
     //sign out method
@@ -412,6 +423,7 @@ public class MainActivity extends AppCompatActivity implements
     public void onLoggedIn() {
         Log.d("MainActivity", "User logged in");
         spotifyauth.setText(R.string.signoutspotify);
+
         mPlayer.playUri(null, "spotify:track:7rdUtXasA973gmrr2Xxh3E", 0, 0); //play spotify track with given URI on login
     }
 
