@@ -1,9 +1,15 @@
 package com.maxlord.mylocality;
 
+import android.*;
+import android.Manifest;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.location.Location;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
+import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 //import android.support.v7.widget.Toolbar;
 import android.util.Log;
@@ -13,6 +19,9 @@ import android.widget.EditText;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
@@ -32,7 +41,7 @@ import com.spotify.sdk.android.player.SpotifyPlayer;
 
 
 public class MainActivity extends AppCompatActivity implements
-        SpotifyPlayer.NotificationCallback, ConnectionStateCallback {
+        SpotifyPlayer.NotificationCallback, ConnectionStateCallback, GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener {
 
     //spotify objects
     private static final String CLIENT_ID = "5eea0338e20a487d844c55d357b4e684";
@@ -50,12 +59,22 @@ public class MainActivity extends AppCompatActivity implements
     private ProgressBar progressBar;
     private FirebaseAuth.AuthStateListener authListener;
     private FirebaseAuth auth;
+    private GoogleApiClient mGoogleApiClient;
+    private Location mLastLocation;
 
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        if (mGoogleApiClient == null) {
+            mGoogleApiClient = new GoogleApiClient.Builder(this)
+                    .addConnectionCallbacks(this)
+                    .addOnConnectionFailedListener(this)
+                    .addApi(LocationServices.API)
+                    .build();
+        }
 
 
         /*
@@ -287,14 +306,50 @@ public class MainActivity extends AppCompatActivity implements
                 AuthenticationClient.openLoginActivity(MainActivity.this, REQUEST_CODE, request);
 
 
-
             }
         });
 
 
+    }
 
-
-
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            // TODO: Consider calling
+            //    ActivityCompat#requestPermissions
+            // here to request the missing permissions, and then overriding
+            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+            //                                          int[] grantResults)
+            // to handle the case where the user grants the permission. See the documentation
+            // for ActivityCompat#requestPermissions for more details.
+            return;
+        }
+        mLastLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
+        Log.d("MAX", "connected");
+        if (mLastLocation != null) {
+            Log.d("MAX", "" + mLastLocation.getLatitude());
+            Log.d("MAX", "" + mLastLocation.getLongitude());
+        }
+    }
+    @Override
+    public void onConnected(Bundle connectionHint) {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            String[] permissions = {Manifest.permission.ACCESS_FINE_LOCATION};
+            ActivityCompat.requestPermissions(this, permissions, 1337);
+            // here to request the missing permissions, and then overriding
+            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+            //                                          int[] grantResults)
+            // to handle the case where the user grants the permission. See the documentation
+            // for ActivityCompat#requestPermissions for more details.
+            Log.d("MAX", "permission denied");
+            return;
+        }
+        mLastLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
+        Log.d("MAX", "connected");
+        if (mLastLocation != null) {
+            Log.d("MAX", "" + mLastLocation.getLatitude());
+            Log.d("MAX", "" + mLastLocation.getLongitude());
+        }
     }
     public void createPlaylist(){
         //
@@ -313,16 +368,19 @@ public class MainActivity extends AppCompatActivity implements
 
     @Override
     public void onStart() {
-        super.onStart();
+        mGoogleApiClient.connect();
         auth.addAuthStateListener(authListener);
+        super.onStart();
+
     }
 
     @Override
     public void onStop() {
-        super.onStop();
+        mGoogleApiClient.disconnect();
         if (authListener != null) {
             auth.removeAuthStateListener(authListener);
         }
+        super.onStop();
     }
 
     protected void onNewIntent(Intent intent) {
@@ -451,5 +509,16 @@ public class MainActivity extends AppCompatActivity implements
     @Override
     public void onConnectionMessage(String message) {
         Log.d("MainActivity", "Received connection message: " + message);
+    }
+
+
+    @Override
+    public void onConnectionSuspended(int i) {
+
+    }
+
+    @Override
+    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
+
     }
 }

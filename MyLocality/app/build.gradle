@@ -36,7 +36,12 @@ repositories {
         dirs 'libs'
     }
     mavenCentral()
-    maven { url "https://jitpack.io" }
+    maven {
+        url "https://jitpack.io"
+    }
+    maven {
+        url "https://maven.google.com"
+    }
 
 }
 
@@ -53,7 +58,7 @@ dependencies {
     compile 'com.android.support:design:25.3.1'
     compile 'com.spotify.android:auth:1.0.0-alpha'
     compile 'com.android.support:customtabs:25.3.1'
-    compile 'com.google.android.gms:play-services-location:11.4.2'
+    compile 'com.google.android.gms:play-services-location:10.0.1'
     testCompile 'junit:junit:4.12'
 }
 
