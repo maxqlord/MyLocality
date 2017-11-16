@@ -3,8 +3,11 @@ package com.maxlord.mylocality;
 import android.*;
 import android.Manifest;
 import android.app.DownloadManager;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.location.Address;
+import android.location.Geocoder;
 import android.location.Location;
 import android.net.Uri;
 import android.os.Bundle;
@@ -13,9 +16,7 @@ import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 //import android.support.v7.widget.Toolbar;
-import android.util.ArrayMap;
 import android.util.Log;
-import android.util.Pair;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -26,6 +27,7 @@ import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -327,9 +329,41 @@ public class MainActivity extends AppCompatActivity implements
 
 
     }
-    public double[] getLatLong(String s) {
+
+    public Location getLocation() {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            String[] permissions = {Manifest.permission.ACCESS_FINE_LOCATION};
+            ActivityCompat.requestPermissions(this, permissions, 1337);
+            // here to request the missing permissions, and then overriding
+            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+            //                                          int[] grantResults)
+            // to handle the case where the user grants the permission. See the documentation
+            // for ActivityCompat#requestPermissions for more details.
+            Log.d("MAX", "permission denied");
+            return null;
+        }
+        mLastLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
+        Log.d("MAX", "connected");
+        if (mLastLocation != null) {
+            Log.d("MAX", "" + mLastLocation.getLatitude());
+            Log.d("MAX", "" + mLastLocation.getLongitude());
+            return mLastLocation;
+        }
+        return null;
+    }
+
+    public LatLng getLatLong(String s) throws IOException {
         double[] latlong = new double[2];
-        return latlong;
+        Geocoder gc = new Geocoder(this);
+        List<Address> addresses= gc.getFromLocationName(s, 5); // get the found Address Objects
+
+        List<LatLng> ll = new ArrayList<LatLng>(addresses.size()); // A list to save the coordinates if they are available
+        for(Address a : addresses){
+            if(a.hasLatitude() && a.hasLongitude()){
+                ll.add(new LatLng(a.getLatitude(), a.getLongitude()));
+            }
+        }
+        return ll.get(0);
     }
 
     public void createLocationData(File playlists, File cities) throws IOException {
@@ -363,9 +397,9 @@ public class MainActivity extends AppCompatActivity implements
         for(int citynum = 0; citynum < ids.size(); citynum++) {
             String id = ids.get(citynum);
             String location = locations.get(citynum);
-            double[] latlong = getLatLong(location);
-            double latitude = latlong[0];
-            double longitude = latlong[1];
+            LatLng latlong = getLatLong(location);
+            double latitude = latlong.latitude;
+            double longitude = latlong.longitude;
             LocationData loc = new LocationData(id, location, latitude, longitude);
             map.put(location, loc); //reference to object from city string
             //create object with id, location, lat, long
