@@ -2,6 +2,7 @@ package com.maxlord.mylocality;
 
 import android.*;
 import android.Manifest;
+import android.app.DownloadManager;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Location;
@@ -12,7 +13,9 @@ import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 //import android.support.v7.widget.Toolbar;
+import android.util.ArrayMap;
 import android.util.Log;
+import android.util.Pair;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -36,6 +39,16 @@ import com.spotify.sdk.android.player.Player;
 import com.spotify.sdk.android.player.PlayerEvent;
 import com.spotify.sdk.android.player.Spotify;
 import com.spotify.sdk.android.player.SpotifyPlayer;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 //spotify account must only work for one user
 
@@ -61,6 +74,9 @@ public class MainActivity extends AppCompatActivity implements
     private FirebaseAuth auth;
     private GoogleApiClient mGoogleApiClient;
     private Location mLastLocation;
+    private List<String> ids, locations;
+    private Map<String, LocationData> map;
+
 
 
     @Override
@@ -311,6 +327,54 @@ public class MainActivity extends AppCompatActivity implements
 
 
     }
+    public double[] getLatLong(String s) {
+        double[] latlong = new double[2];
+        return latlong;
+    }
+
+    public void createLocationData(File playlists, File cities) throws IOException {
+        ids = new ArrayList<>();
+        locations = new ArrayList<>();
+        map = new HashMap<>();
+        //playlist ids
+        try (BufferedReader br = new BufferedReader(new FileReader(playlists))) {
+            String line = br.readLine();
+            while (line != null) {
+                ids.add(line);
+                line = br.readLine();
+            }
+            //String everything = sb.toString();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        //locations
+
+        try (BufferedReader br2 = new BufferedReader(new FileReader(cities))) {
+            String line = br2.readLine();
+            while (line != null) {
+                locations.add(line);
+                line = br2.readLine();
+            }
+            //String everything = sb.toString();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        for(int citynum = 0; citynum < ids.size(); citynum++) {
+            String id = ids.get(citynum);
+            String location = locations.get(citynum);
+            double[] latlong = getLatLong(location);
+            double latitude = latlong[0];
+            double longitude = latlong[1];
+            LocationData loc = new LocationData(id, location, latitude, longitude);
+            map.put(location, loc); //reference to object from city string
+            //create object with id, location, lat, long
+
+        }
+
+
+
+    }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
@@ -351,9 +415,8 @@ public class MainActivity extends AppCompatActivity implements
             Log.d("MAX", "" + mLastLocation.getLongitude());
         }
     }
-    public void createPlaylist(){
-        //
-    }
+
+
 
     //sign out method
     public void signOut() {
