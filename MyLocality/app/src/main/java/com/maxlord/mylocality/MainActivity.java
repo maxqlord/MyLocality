@@ -77,7 +77,8 @@ public class MainActivity extends AppCompatActivity implements
     private GoogleApiClient mGoogleApiClient;
     private Location mLastLocation;
     private List<String> ids, locations;
-    private Map<String, LocationData> map;
+    private Map<String, LocationData> citymap;
+    private Map<LatLng, LocationData> latlngmap;
 
 
 
@@ -326,8 +327,19 @@ public class MainActivity extends AppCompatActivity implements
 
             }
         });
+        try {
+            spotifyFlow();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 
-
+    }
+    public void spotifyFlow() throws IOException {
+        readLocationData(new File("PlaylistIDs.txt"), new File("Cities.txt"));
+        Location userLocation = getLocation();
+        LatLng userLatLng = new LatLng(userLocation.getLatitude(), userLocation.getLongitude());
+        String city = findClosestCity(userLatLng);
+        String id = getPlaylistFromCity(city);
     }
 
     public Location getLocation() {
@@ -353,7 +365,6 @@ public class MainActivity extends AppCompatActivity implements
     }
 
     public LatLng getLatLong(String s) throws IOException {
-        double[] latlong = new double[2];
         Geocoder gc = new Geocoder(this);
         List<Address> addresses= gc.getFromLocationName(s, 5); // get the found Address Objects
 
@@ -366,10 +377,38 @@ public class MainActivity extends AppCompatActivity implements
         return ll.get(0);
     }
 
-    public void createLocationData(File playlists, File cities) throws IOException {
+    public String findClosestCity(LatLng current) {
+        String closest = "";
+        double closestDist = 1000000.0;
+        Location curr = new Location("Phone");
+        curr.setLatitude(current.latitude);
+        curr.setLongitude(current.longitude);
+        for ( LatLng key : latlngmap.keySet() ) {
+            Location city = new Location("Map");
+            city.setLatitude(key.latitude);
+            city.setLongitude(key.longitude);
+            float distToCity = curr.distanceTo(city);
+            if(distToCity < closestDist) {
+                closestDist = distToCity;
+                closest = latlngmap.get(key).getLocation();
+            }
+            //System.out.println( key );
+        }
+        return closest;
+
+
+    }
+
+    public String getPlaylistFromCity(String city) {
+        LocationData loc = citymap.get(city);
+        return loc.getID();
+    }
+
+    public void readLocationData(File playlists, File cities) throws IOException {
         ids = new ArrayList<>();
         locations = new ArrayList<>();
-        map = new HashMap<>();
+        citymap = new HashMap<>();
+        latlngmap = new HashMap<>();
         //playlist ids
         try (BufferedReader br = new BufferedReader(new FileReader(playlists))) {
             String line = br.readLine();
@@ -401,7 +440,8 @@ public class MainActivity extends AppCompatActivity implements
             double latitude = latlong.latitude;
             double longitude = latlong.longitude;
             LocationData loc = new LocationData(id, location, latitude, longitude);
-            map.put(location, loc); //reference to object from city string
+            citymap.put(location, loc); //reference to object from city string
+            latlngmap.put(latlong, loc);
             //create object with id, location, lat, long
 
         }

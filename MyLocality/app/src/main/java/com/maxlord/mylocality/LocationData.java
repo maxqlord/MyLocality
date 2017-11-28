@@ -5,6 +5,7 @@ package com.maxlord.mylocality;
  */
 
 class LocationData {
+
     String id;
     String location;
     double latitude;
@@ -15,10 +16,10 @@ class LocationData {
         latitude = lat;
         longitude = lon;
     }
-    public String getID() {
+    String getID() {
         return id;
     }
-    public String getLocation() {
+    String getLocation() {
         return location;
     }
     public double getLatitude() {
