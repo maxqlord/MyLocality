@@ -1,11 +1,12 @@
 package com.maxlord.mylocality;
 
-import android.*;
+// android app stuff
 import android.Manifest;
 import android.app.DownloadManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+//location stuff
 import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
@@ -17,20 +18,31 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 //import android.support.v7.widget.Toolbar;
 import android.util.Log;
+//layout stuff
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ProgressBar;
+import android.widget.TextView;
 import android.widget.Toast;
-
+//http request stuff
+import com.android.volley.Request;
+import com.android.volley.RequestQueue;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.StringRequest;
+import com.android.volley.toolbox.Volley;
+//google services stuff
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.tasks.Task;
+//firebase auth stuff
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+//spotify stuff
 import com.spotify.sdk.android.authentication.AuthenticationClient;
 import com.spotify.sdk.android.authentication.AuthenticationRequest;
 import com.spotify.sdk.android.authentication.AuthenticationResponse;
@@ -41,7 +53,7 @@ import com.spotify.sdk.android.player.Player;
 import com.spotify.sdk.android.player.PlayerEvent;
 import com.spotify.sdk.android.player.Spotify;
 import com.spotify.sdk.android.player.SpotifyPlayer;
-
+//java objects
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -52,32 +64,44 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-//spotify account must only work for one user
+//Todo: make asset folder and test spotify flow
+//Todo: spotify account must only work for one user
+//Todo: Google places integration
+//Todo: Eventful integration
+//Todo: Weather integration
 
 
 public class MainActivity extends AppCompatActivity implements
-        SpotifyPlayer.NotificationCallback, ConnectionStateCallback, GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener {
+        SpotifyPlayer.NotificationCallback, ConnectionStateCallback, GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener { //spotify and google interfaces
 
     //spotify objects
+    //spotify clientid
     private static final String CLIENT_ID = "5eea0338e20a487d844c55d357b4e684";
+    //redirect for spotify connection
     private static final String REDIRECT_URI = "mylocality-auth.com://callback";
+    //spotify player
     private Player mPlayer;
     // Request code that will be used to verify if the result comes from correct activity
     // Can be any integer
     private static final int REQUEST_CODE = 1337;
 
-    //layout objects for firebase
+    //layout objects for firebase user profile operations
     private Button btnChangeEmail, btnChangePassword, btnSendResetEmail, btnRemoveUser,
             changeEmail, changePassword, sendEmail, remove, signOut, spotifyauth;
-
     private EditText oldEmail, newEmail, password, newPassword;
     private ProgressBar progressBar;
+    //firebase objects
     private FirebaseAuth.AuthStateListener authListener;
     private FirebaseAuth auth;
+    //connection to google services
     private GoogleApiClient mGoogleApiClient;
+    //location of phone
     private Location mLastLocation;
+    //lists of playlist ids and cities with a playlist
     private List<String> ids, locations;
+    //map a city to its locationdata object
     private Map<String, LocationData> citymap;
+    //map a latlng to its locationdata object
     private Map<LatLng, LocationData> latlngmap;
 
 
@@ -85,9 +109,12 @@ public class MainActivity extends AppCompatActivity implements
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        //load layout
         setContentView(R.layout.activity_main);
 
+        //if not connected to google api
         if (mGoogleApiClient == null) {
+            //connect to google api
             mGoogleApiClient = new GoogleApiClient.Builder(this)
                     .addConnectionCallbacks(this)
                     .addOnConnectionFailedListener(this)
@@ -102,16 +129,17 @@ public class MainActivity extends AppCompatActivity implements
         setSupportActionBar(toolbar);
         */
         //get firebase auth instance
-
         auth = FirebaseAuth.getInstance();
 
         //get current user
         final FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
 
+        //check auth status
         authListener = new FirebaseAuth.AuthStateListener() {
             @Override
             public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
                 FirebaseUser user = firebaseAuth.getCurrentUser();
+                //if logged out
                 if (user == null) {
                     // user auth state is changed - user is null
                     // launch login activity
@@ -121,6 +149,7 @@ public class MainActivity extends AppCompatActivity implements
             }
         };
 
+        //instantiate firebase profile operation interface
         btnChangeEmail = (Button) findViewById(R.id.change_email_button);
         btnChangePassword = (Button) findViewById(R.id.change_password_button);
         btnSendResetEmail = (Button) findViewById(R.id.sending_pass_reset_button);
@@ -130,13 +159,17 @@ public class MainActivity extends AppCompatActivity implements
         sendEmail = (Button) findViewById(R.id.send);
         remove = (Button) findViewById(R.id.remove);
         signOut = (Button) findViewById(R.id.sign_out);
+
+        //instantiate button to trigger spotify
         spotifyauth = (Button) findViewById(R.id.spotifyauth);
 
+        //instantiate firebase profile input interface
         oldEmail = (EditText) findViewById(R.id.old_email);
         newEmail = (EditText) findViewById(R.id.new_email);
         password = (EditText) findViewById(R.id.password);
         newPassword = (EditText) findViewById(R.id.newPassword);
 
+        //invisible view and doesn't take up layout space
         oldEmail.setVisibility(View.GONE);
         newEmail.setVisibility(View.GONE);
         password.setVisibility(View.GONE);
@@ -152,6 +185,7 @@ public class MainActivity extends AppCompatActivity implements
             progressBar.setVisibility(View.GONE);
         }
 
+        //button listeners
         btnChangeEmail.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -171,7 +205,7 @@ public class MainActivity extends AppCompatActivity implements
             @Override
             public void onClick(View v) {
                 progressBar.setVisibility(View.VISIBLE);
-                if (user != null && !newEmail.getText().toString().trim().equals("")) {
+                if (user != null && !newEmail.getText().toString().trim().equals("")) { //user logged in with a valid email
                     user.updateEmail(newEmail.getText().toString().trim())
                             .addOnCompleteListener(new OnCompleteListener<Void>() {
                                 @Override
@@ -187,6 +221,7 @@ public class MainActivity extends AppCompatActivity implements
                                 }
                             });
                 } else if (newEmail.getText().toString().trim().equals("")) {
+                    //if email field blank
                     newEmail.setError("Enter email");
                     progressBar.setVisibility(View.GONE);
                 }
@@ -314,11 +349,15 @@ public class MainActivity extends AppCompatActivity implements
                 /*Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://accounts.spotify.com"));
                 startActivity(browserIntent);*/
 
+
+                //authenticate spotify
                 AuthenticationRequest.Builder builder = new AuthenticationRequest.Builder(CLIENT_ID,
                         AuthenticationResponse.Type.TOKEN,
                         REDIRECT_URI);
                 //spotify permissions
+                //thing that asks if the logged in user is you
                 builder.setShowDialog(true);
+                //permissions
                 builder.setScopes(new String[]{"streaming", "playlist-modify-private", "user-library-modify", "user-read-private"}); //permissions
                 AuthenticationRequest request = builder.build();
 
@@ -335,11 +374,40 @@ public class MainActivity extends AppCompatActivity implements
 
     }
     public void spotifyFlow() throws IOException {
+        //read text file into lists
         readLocationData(new File("PlaylistIDs.txt"), new File("Cities.txt"));
+        //get location
         Location userLocation = getLocation();
+        //create latlng object
         LatLng userLatLng = new LatLng(userLocation.getLatitude(), userLocation.getLongitude());
+        //find closest city to latlng
         String city = findClosestCity(userLatLng);
+        //get playlist id of city
         String id = getPlaylistFromCity(city);
+        //build request
+        String request = "https://api.spotify.com/v1/users/thesoundsofspotify/playlists/" + id;
+
+
+// Instantiate the RequestQueue.
+        RequestQueue queue = Volley.newRequestQueue(this);
+
+// Request a string response from the provided URL.
+        StringRequest stringRequest = new StringRequest(Request.Method.GET, request,
+                new Response.Listener<String>() {
+                    @Override
+                    public void onResponse(String response) {
+                        // Display the first 500 characters of the response string.
+                        String playlistinfo = response;
+                        Log.i("spotify json", playlistinfo);
+                    }
+                }, new Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                Log.e("spotifyFlow", "Volley error");
+            }
+        });
+// Add the request to the RequestQueue.
+        queue.add(stringRequest);
     }
 
     public Location getLocation() {
@@ -453,7 +521,6 @@ public class MainActivity extends AppCompatActivity implements
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            // TODO: Consider calling
             //    ActivityCompat#requestPermissions
             // here to request the missing permissions, and then overriding
             //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
