@@ -103,6 +103,8 @@ public class MainActivity extends AppCompatActivity implements
     private Map<String, LocationData> citymap;
     //map a latlng to its locationdata object
     private Map<LatLng, LocationData> latlngmap;
+    //check if spotify user is logged in
+    private boolean spotifyLoggedIn;
 
 
 
@@ -346,46 +348,78 @@ public class MainActivity extends AppCompatActivity implements
         spotifyauth.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                /*Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://accounts.spotify.com"));
+                spotifyAuthenticate();
+            }
+        });
+        //maybe don't force the login
+        if(spotifyLoggedIn) {
+            Log.i("Spotify:", "Flow initiated");
+            spotifyFlow();
+        } else {
+            Log.i("Spotify:", "User logged out");
+            //spotifyAuthenticate(); don't force the login
+        }
+
+
+        runTest();
+
+    }
+    public void runTest() {
+        spotifyAuthenticate();
+
+        /*
+        expected output:
+        "onActivityResult", "spotify flow engaged"    //spotify login check
+        "spotifyFlow", "File read successful" //file read check
+        "//latitude", "//longitude"  //at tj
+        "spotifyFlow", "city" (should be DC area)
+        "spotifyFlow", "https://api.spotify.com/v1/users/thesoundsofspotify/playlists/someID
+        JSON of that playlist
+
+     
+         */
+    }
+
+    public void spotifyAuthenticate() {
+        /*Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://accounts.spotify.com"));
                 startActivity(browserIntent);*/
 
 
-                //authenticate spotify
-                AuthenticationRequest.Builder builder = new AuthenticationRequest.Builder(CLIENT_ID,
-                        AuthenticationResponse.Type.TOKEN,
-                        REDIRECT_URI);
-                //spotify permissions
-                //thing that asks if the logged in user is you
-                builder.setShowDialog(true);
-                //permissions
-                builder.setScopes(new String[]{"streaming", "playlist-modify-private", "user-library-modify", "user-read-private"}); //permissions
-                AuthenticationRequest request = builder.build();
+        //authenticate spotify
+        AuthenticationRequest.Builder builder = new AuthenticationRequest.Builder(CLIENT_ID,
+                AuthenticationResponse.Type.TOKEN,
+                REDIRECT_URI);
+        //spotify permissions
+        //thing that asks if the logged in user is you
+        builder.setShowDialog(true);
+        //permissions
+        builder.setScopes(new String[]{"streaming", "playlist-modify-private", "user-library-modify", "user-read-private"}); //permissions
+        AuthenticationRequest request = builder.build();
 
-                AuthenticationClient.openLoginActivity(MainActivity.this, REQUEST_CODE, request);
-
-
-            }
-        });
+        AuthenticationClient.openLoginActivity(MainActivity.this, REQUEST_CODE, request);
+    }
+    public void spotifyFlow() {
+        //read text file into lists
         try {
-            spotifyFlow();
+            readLocationData(new File("PlaylistIDs.txt"), new File("Cities.txt"));
+            Log.d("spotifyFlow", "File read successful");
         } catch (IOException e) {
             e.printStackTrace();
+            Log.e("spotifyFlow", "ids and cities not found");
         }
-
-    }
-    public void spotifyFlow() throws IOException {
-        //read text file into lists
-        readLocationData(new File("PlaylistIDs.txt"), new File("Cities.txt"));
         //get location
         Location userLocation = getLocation();
+        Log.d(userLocation.getLatitude() + "", userLocation.getLongitude() + "");
         //create latlng object
         LatLng userLatLng = new LatLng(userLocation.getLatitude(), userLocation.getLongitude());
         //find closest city to latlng
         String city = findClosestCity(userLatLng);
+        Log.d("spotifyFlow", city);
         //get playlist id of city
         String id = getPlaylistFromCity(city);
         //build request
         String request = "https://api.spotify.com/v1/users/thesoundsofspotify/playlists/" + id;
+        Log.d("spotifyflow", request);
 
 
 // Instantiate the RequestQueue.
@@ -396,9 +430,9 @@ public class MainActivity extends AppCompatActivity implements
                 new Response.Listener<String>() {
                     @Override
                     public void onResponse(String response) {
-                        // Display the first 500 characters of the response string.
+                        // Display the request response
                         String playlistinfo = response;
-                        Log.i("spotify json", playlistinfo);
+                        Log.d("spotify json", playlistinfo);
                     }
                 }, new Response.ErrorListener() {
             @Override
@@ -510,6 +544,7 @@ public class MainActivity extends AppCompatActivity implements
             LocationData loc = new LocationData(id, location, latitude, longitude);
             citymap.put(location, loc); //reference to object from city string
             latlngmap.put(latlong, loc);
+
             //create object with id, location, lat, long
 
         }
@@ -586,7 +621,7 @@ public class MainActivity extends AppCompatActivity implements
         }
         super.onStop();
     }
-
+/*
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
 
@@ -605,6 +640,8 @@ public class MainActivity extends AppCompatActivity implements
                             mPlayer = spotifyPlayer;
                             mPlayer.addConnectionStateCallback(MainActivity.this);
                             mPlayer.addNotificationCallback(MainActivity.this);
+                            Log.d("onNewIntent", "spotify flow");
+                            spotifyFlow();
                         }
 
                         @Override
@@ -627,6 +664,7 @@ public class MainActivity extends AppCompatActivity implements
             }
         }
     }
+    */
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent intent) {
         super.onActivityResult(requestCode, resultCode, intent);
@@ -644,6 +682,8 @@ public class MainActivity extends AppCompatActivity implements
                         mPlayer = spotifyPlayer;
                         mPlayer.addConnectionStateCallback(MainActivity.this);
                         mPlayer.addNotificationCallback(MainActivity.this);
+                        Log.d("onActivityResult", "spotify flow engaged");
+                        spotifyFlow();
                     }
 
                     @Override
@@ -685,8 +725,8 @@ public class MainActivity extends AppCompatActivity implements
     public void onLoggedIn() {
         Log.d("MainActivity", "User logged in");
         spotifyauth.setText(R.string.signoutspotify);
-
-        mPlayer.playUri(null, "spotify:track:7rdUtXasA973gmrr2Xxh3E", 0, 0); //play spotify track with given URI on login
+        spotifyLoggedIn = true;
+        //mPlayer.playUri(null, "spotify:track:7rdUtXasA973gmrr2Xxh3E", 0, 0); //play spotify track with given URI on login
     }
 
     @Override
