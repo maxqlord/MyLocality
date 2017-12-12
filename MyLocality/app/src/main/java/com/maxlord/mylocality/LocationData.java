@@ -28,4 +28,7 @@ class LocationData {
     public double getLongitude() {
         return longitude;
     }
+    public String toString() {
+        return "City: " + location + "\tLatitude: " + latitude + "\tLongitude" + longitude + "\tID: " + id;
+    }
 }

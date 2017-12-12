@@ -17,6 +17,7 @@ import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 //import android.support.v7.widget.Toolbar;
+import android.text.LoginFilter;
 import android.util.Log;
 //layout stuff
 import android.view.View;
@@ -59,6 +60,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -361,7 +363,7 @@ public class MainActivity extends AppCompatActivity implements
         }
 
 
-        runTest();
+        //runTest();
 
     }
     public void runTest() {
@@ -403,6 +405,7 @@ public class MainActivity extends AppCompatActivity implements
         try {
             readLocationData(new File("PlaylistIDs.txt"), new File("Cities.txt"));
             Log.d("spotifyFlow", "File read successful");
+
         } catch (IOException e) {
             e.printStackTrace();
             Log.e("spotifyFlow", "ids and cities not found");
@@ -512,7 +515,7 @@ public class MainActivity extends AppCompatActivity implements
         citymap = new HashMap<>();
         latlngmap = new HashMap<>();
         //playlist ids
-        try (BufferedReader br = new BufferedReader(new FileReader(playlists))) {
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(getAssets().open("PlaylistIDs")))) {
             String line = br.readLine();
             while (line != null) {
                 ids.add(line);
@@ -524,8 +527,9 @@ public class MainActivity extends AppCompatActivity implements
         }
         //locations
 
-        try (BufferedReader br2 = new BufferedReader(new FileReader(cities))) {
+        try (BufferedReader br2 = new BufferedReader(new InputStreamReader(getAssets().open("Cities")))) {
             String line = br2.readLine();
+
             while (line != null) {
                 locations.add(line);
                 line = br2.readLine();
@@ -534,6 +538,8 @@ public class MainActivity extends AppCompatActivity implements
         } catch (IOException e) {
             e.printStackTrace();
         }
+        Log.i("readData", ids.get(0));
+        Log.i("readData", locations.get(0));
 
         for(int citynum = 0; citynum < ids.size(); citynum++) {
             String id = ids.get(citynum);
