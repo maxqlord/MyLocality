@@ -31,6 +31,7 @@ import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
+import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
 //google services stuff
@@ -55,6 +56,9 @@ import com.spotify.sdk.android.player.PlayerEvent;
 import com.spotify.sdk.android.player.Spotify;
 import com.spotify.sdk.android.player.SpotifyPlayer;
 //java objects
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -404,7 +408,7 @@ public class MainActivity extends AppCompatActivity implements
         //read text file into lists
         try {
             readLocationData(new File("PlaylistIDs.txt"), new File("Cities.txt"));
-            Log.d("spotifyFlow", "File read successful");
+            Log.i("spotifyFlow", "File read successful");
 
         } catch (IOException e) {
             e.printStackTrace();
@@ -470,6 +474,52 @@ public class MainActivity extends AppCompatActivity implements
     }
 
     public LatLng getLatLong(String s) throws IOException {
+
+        RequestQueue requestQueue = Volley.newRequestQueue(getApplicationContext());
+        s = s.replaceAll(" ", "");
+        String request = "https://maps.googleapis.com/maps/api/geocode/json?address=" + s + "&key=AIzaSyAHTmTxlkasYVxQcFNKyhxb4JEuQ5oJSn4";
+        Log.i("JSON", request);
+        final LatLng[] temp = new LatLng[1];
+
+        JsonObjectRequest jsObjRequest = new JsonObjectRequest(Request.Method.GET, request, null, new Response.Listener<JSONObject>() {
+            @Override
+            public void onResponse(JSONObject response) {
+                if(response != null) {
+                    Log.i("JSON", response.toString());
+                    JSONObject location;
+
+                    double latitude, longitude;
+                    try {
+                        location = response.getJSONArray("results").getJSONObject(0).getJSONObject("geometry").getJSONObject("location");
+                        Log.i("JSON", location.toString());
+                        latitude = location.getDouble("lat");
+                        Log.i("JSON", latitude + "");
+                        longitude = location.getDouble("lng");
+                        Log.i("JSON", longitude + "");
+                        LatLng latlng = new LatLng(latitude, longitude);
+                        temp[0] = latlng;
+
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+
+                } else {
+                    Log.i("JSON", "Response null");
+                }
+            }
+
+        }, new Response.ErrorListener() {
+
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                Log.e("LatLngError", error.toString());
+
+            }
+        });
+        requestQueue.add(jsObjRequest);
+        return temp[0];
+    }
+        /*
         Geocoder gc = new Geocoder(this);
         List<Address> addresses= gc.getFromLocationName(s, 5); // get the found Address Objects
 
@@ -479,8 +529,8 @@ public class MainActivity extends AppCompatActivity implements
                 ll.add(new LatLng(a.getLatitude(), a.getLongitude()));
             }
         }
-        return ll.get(0);
-    }
+        return ll.get(0); */
+
 
     public String findClosestCity(LatLng current) {
         String closest = "";
@@ -547,9 +597,9 @@ public class MainActivity extends AppCompatActivity implements
             LatLng latlong = getLatLong(location);
             double latitude = latlong.latitude;
             double longitude = latlong.longitude;
-            LocationData loc = new LocationData(id, location, latitude, longitude);
-            citymap.put(location, loc); //reference to object from city string
-            latlngmap.put(latlong, loc);
+            //LocationData loc = new LocationData(id, location, latitude, longitude);
+            //citymap.put(location, loc); //reference to object from city string
+            //latlngmap.put(latlong, loc);
 
             //create object with id, location, lat, long
 
@@ -672,7 +722,7 @@ public class MainActivity extends AppCompatActivity implements
     }
     */
     @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent intent) {
+    protected void onActivityResult(int requestCode, int resultCode, Intent intent) { //from spotify login
         super.onActivityResult(requestCode, resultCode, intent);
         // Check if result comes from the correct activity
         if (requestCode == REQUEST_CODE) {
