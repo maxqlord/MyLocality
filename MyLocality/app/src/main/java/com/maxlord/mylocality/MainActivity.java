@@ -591,15 +591,63 @@ public class MainActivity extends AppCompatActivity implements
         Log.i("readData", ids.get(0));
         Log.i("readData", locations.get(0));
 
-        for(int citynum = 0; citynum < ids.size(); citynum++) {
-            String id = ids.get(citynum);
+
+        for(int citynum = 0; citynum < ids.size()/20; citynum++) {
+            final boolean[] found = {false};
+            final String id = ids.get(citynum);
             String location = locations.get(citynum);
-            LatLng latlong = getLatLong(location);
-            double latitude = latlong.latitude;
-            double longitude = latlong.longitude;
-            //LocationData loc = new LocationData(id, location, latitude, longitude);
-            //citymap.put(location, loc); //reference to object from city string
-            //latlngmap.put(latlong, loc);
+
+            RequestQueue requestQueue = Volley.newRequestQueue(getApplicationContext());
+            location = location.replaceAll(" ", "");
+            String request = "https://maps.googleapis.com/maps/api/geocode/json?address=" + location + "&key=AIzaSyAHTmTxlkasYVxQcFNKyhxb4JEuQ5oJSn4";
+            Log.i("JSON", request);
+            final LatLng[] temp = new LatLng[1];
+
+            final String finalLocation = location;
+            JsonObjectRequest jsObjRequest = new JsonObjectRequest(Request.Method.GET, request, null, new Response.Listener<JSONObject>() {
+                @Override
+                public void onResponse(JSONObject response) {
+                    if(response != null) {
+                        Log.i("JSON", response.toString());
+                        JSONObject locationJSON;
+
+                        double latitude, longitude;
+                        try {
+                            found[0] = true;
+                            locationJSON = response.getJSONArray("results").getJSONObject(0).getJSONObject("geometry").getJSONObject("location");
+                            Log.i("JSON", locationJSON.toString());
+                            latitude = locationJSON.getDouble("lat");
+                            Log.i("JSON", latitude + "");
+                            longitude = locationJSON.getDouble("lng");
+                            Log.i("JSON", longitude + "");
+                            LatLng latlng = new LatLng(latitude, longitude);
+                            LocationData loc = new LocationData(id, finalLocation, latitude, longitude);
+                            citymap.put(finalLocation, loc); //reference to object from city string
+                            latlngmap.put(latlng, loc);
+
+
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                        }
+
+                    } else {
+                        Log.i("JSON", "Response null");
+                    }
+                }
+
+            }, new Response.ErrorListener() {
+
+                @Override
+                public void onErrorResponse(VolleyError error) {
+                    Log.e("LatLngError", error.toString());
+
+                }
+            });
+            requestQueue.add(jsObjRequest);
+
+
+
+
 
             //create object with id, location, lat, long
 
