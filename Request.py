@@ -4,9 +4,8 @@ citylist = []
 with open('Cities') as inputfile:
     for line in inputfile:
         citylist.append(line)
-
 f = open('coordinates.txt','w')
-for location in range(0, len(citylist)):
+for location in range(len(citylist)):
     resp = requests.get(url = "https://maps.googleapis.com/maps/api/geocode/json?address=" + citylist[location] + "&key=AIzaSyAHTmTxlkasYVxQcFNKyhxb4JEuQ5oJSn4")
     data = json.loads(resp.content)
     latitude = data["results"][0]["geometry"]["location"]["lat"]
@@ -15,7 +14,7 @@ for location in range(0, len(citylist)):
     print(str(location+1) + "  " + citylist[location] + " " + str(latitude) + "," + str(longitude) + "#")
 f.close()
 
-#get rid of 731
+
 
 
 

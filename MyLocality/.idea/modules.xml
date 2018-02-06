@@ -5,7 +5,6 @@
       <module fileurl="file://$PROJECT_DIR$/MyLocality.iml" filepath="$PROJECT_DIR$/MyLocality.iml" />
       <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
       <module fileurl="file://$PROJECT_DIR$/spotify-auth/spotify-auth.iml" filepath="$PROJECT_DIR$/spotify-auth/spotify-auth.iml" />
-      <module fileurl="file://$PROJECT_DIR$/spotify-auth/spotify-auth.iml" filepath="$PROJECT_DIR$/spotify-auth/spotify-auth.iml" />
     </modules>
   </component>
 </project>
