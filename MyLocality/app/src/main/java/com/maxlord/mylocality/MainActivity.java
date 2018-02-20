@@ -1,6 +1,7 @@
 package com.maxlord.mylocality;
 
 // android app stuff
+
 import android.Manifest;
 import android.app.DownloadManager;
 import android.content.Context;
@@ -37,9 +38,11 @@ import com.android.volley.toolbox.Volley;
 //google services stuff
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 //firebase auth stuff
 import com.google.firebase.auth.FirebaseAuth;
@@ -85,6 +88,7 @@ public class MainActivity extends AppCompatActivity implements
     private static final String CLIENT_ID = "5eea0338e20a487d844c55d357b4e684";
     //redirect for spotify connection
     private static final String REDIRECT_URI = "mylocality-auth.com://callback";
+    //private static final int MY_PERMISSIONS_REQUEST_LOCATION = 2109;
     //spotify player
     private Player mPlayer;
     // Request code that will be used to verify if the result comes from correct activity
@@ -105,13 +109,14 @@ public class MainActivity extends AppCompatActivity implements
     private Location mLastLocation;
     //lists of playlist ids and cities with a playlist
     private List<String> ids, locations;
+    private List<LatLng> coordinates;
     //map a city to its locationdata object
     private Map<String, LocationData> citymap;
     //map a latlng to its locationdata object
     private Map<LatLng, LocationData> latlngmap;
     //check if spotify user is logged in
     private boolean spotifyLoggedIn;
-
+    private FusedLocationProviderClient mFusedLocationClient;
 
 
     @Override
@@ -129,6 +134,8 @@ public class MainActivity extends AppCompatActivity implements
                     .addApi(LocationServices.API)
                     .build();
         }
+        mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+
 
 
         /*
@@ -358,7 +365,7 @@ public class MainActivity extends AppCompatActivity implements
             }
         });
         //maybe don't force the login
-        if(spotifyLoggedIn) {
+        if (spotifyLoggedIn) {
             Log.i("Spotify:", "Flow initiated");
             spotifyFlow();
         } else {
@@ -370,6 +377,7 @@ public class MainActivity extends AppCompatActivity implements
         //runTest();
 
     }
+
     public void runTest() {
         spotifyAuthenticate();
 
@@ -404,10 +412,32 @@ public class MainActivity extends AppCompatActivity implements
 
         AuthenticationClient.openLoginActivity(MainActivity.this, REQUEST_CODE, request);
     }
+
+    public Location getLocation() {
+        final Location[] received = new Location[1];
+        try {
+            mFusedLocationClient.getLastLocation()
+                    .addOnSuccessListener(this, new OnSuccessListener<Location>() {
+                        @Override
+                        public void onSuccess(Location location) {
+                            // Got last known location. In some rare situations this can be null.
+                            if (location != null) {
+                                // Logic to handle location object
+                                received[0] = location;
+                            }
+                        }
+                    });
+        } catch(SecurityException e) {
+                Log.i("getLocation","Location permission not given");
+            }
+        return received[0];
+
+    }
+
     public void spotifyFlow() {
         //read text file into lists
         try {
-            readLocationData(new File("PlaylistIDs.txt"), new File("Cities.txt"));
+            readLocationData();
             Log.i("spotifyFlow", "File read successful");
 
         } catch (IOException e) {
@@ -438,8 +468,7 @@ public class MainActivity extends AppCompatActivity implements
                     @Override
                     public void onResponse(String response) {
                         // Display the request response
-                        String playlistinfo = response;
-                        Log.d("spotify json", playlistinfo);
+                        Log.i("spotify json", response);
                     }
                 }, new Response.ErrorListener() {
             @Override
@@ -450,86 +479,6 @@ public class MainActivity extends AppCompatActivity implements
 // Add the request to the RequestQueue.
         queue.add(stringRequest);
     }
-
-    public Location getLocation() {
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            String[] permissions = {Manifest.permission.ACCESS_FINE_LOCATION};
-            ActivityCompat.requestPermissions(this, permissions, 1337);
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for ActivityCompat#requestPermissions for more details.
-            Log.d("MAX", "permission denied");
-            return null;
-        }
-        mLastLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
-        Log.d("MAX", "connected");
-        if (mLastLocation != null) {
-            Log.d("MAX", "" + mLastLocation.getLatitude());
-            Log.d("MAX", "" + mLastLocation.getLongitude());
-            return mLastLocation;
-        }
-        return null;
-    }
-
-    public LatLng getLatLong(String s) throws IOException {
-
-        RequestQueue requestQueue = Volley.newRequestQueue(getApplicationContext());
-        s = s.replaceAll(" ", "");
-        String request = "https://maps.googleapis.com/maps/api/geocode/json?address=" + s + "&key=AIzaSyAHTmTxlkasYVxQcFNKyhxb4JEuQ5oJSn4";
-        Log.i("JSON", request);
-        final LatLng[] temp = new LatLng[1];
-
-        JsonObjectRequest jsObjRequest = new JsonObjectRequest(Request.Method.GET, request, null, new Response.Listener<JSONObject>() {
-            @Override
-            public void onResponse(JSONObject response) {
-                if(response != null) {
-                    Log.i("JSON", response.toString());
-                    JSONObject location;
-
-                    double latitude, longitude;
-                    try {
-                        location = response.getJSONArray("results").getJSONObject(0).getJSONObject("geometry").getJSONObject("location");
-                        Log.i("JSON", location.toString());
-                        latitude = location.getDouble("lat");
-                        Log.i("JSON", latitude + "");
-                        longitude = location.getDouble("lng");
-                        Log.i("JSON", longitude + "");
-                        LatLng latlng = new LatLng(latitude, longitude);
-                        temp[0] = latlng;
-
-                    } catch (JSONException e) {
-                        e.printStackTrace();
-                    }
-
-                } else {
-                    Log.i("JSON", "Response null");
-                }
-            }
-
-        }, new Response.ErrorListener() {
-
-            @Override
-            public void onErrorResponse(VolleyError error) {
-                Log.e("LatLngError", error.toString());
-
-            }
-        });
-        requestQueue.add(jsObjRequest);
-        return temp[0];
-    }
-        /*
-        Geocoder gc = new Geocoder(this);
-        List<Address> addresses= gc.getFromLocationName(s, 5); // get the found Address Objects
-
-        List<LatLng> ll = new ArrayList<LatLng>(addresses.size()); // A list to save the coordinates if they are available
-        for(Address a : addresses){
-            if(a.hasLatitude() && a.hasLongitude()){
-                ll.add(new LatLng(a.getLatitude(), a.getLongitude()));
-            }
-        }
-        return ll.get(0); */
 
 
     public String findClosestCity(LatLng current) {
@@ -559,11 +508,13 @@ public class MainActivity extends AppCompatActivity implements
         return loc.getID();
     }
 
-    public void readLocationData(File playlists, File cities) throws IOException {
+    public void readLocationData() throws IOException {
         ids = new ArrayList<>();
         locations = new ArrayList<>();
+        coordinates = new ArrayList<>();
         citymap = new HashMap<>();
         latlngmap = new HashMap<>();
+
         //playlist ids
         try (BufferedReader br = new BufferedReader(new InputStreamReader(getAssets().open("PlaylistIDs")))) {
             String line = br.readLine();
@@ -588,112 +539,44 @@ public class MainActivity extends AppCompatActivity implements
         } catch (IOException e) {
             e.printStackTrace();
         }
+        //coordinates
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(getAssets().open("coordinates.txt")))) {
+            String line = br.readLine();
+            while (line != null) {
+                int comma = line.indexOf(",");
+                int end = line.indexOf("#");
+                double latitude = Double.parseDouble(line.substring(0, comma));
+                double longitude = Double.parseDouble(line.substring(comma+1, end));
+                LatLng coordinate = new LatLng(latitude, longitude);
+                coordinates.add(coordinate);
+                line = br.readLine();
+            }
+            //String everything = sb.toString();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
         Log.i("readData", ids.get(0));
         Log.i("readData", locations.get(0));
+        Log.i("readData", coordinates.get(0).toString());
 
 
-        for(int citynum = 0; citynum < ids.size()/20; citynum++) {
-            final boolean[] found = {false};
-            final String id = ids.get(citynum);
+        for(int citynum = 0; citynum < ids.size(); citynum++) {
+
+            String id = ids.get(citynum);
             String location = locations.get(citynum);
+            LatLng coordinate = coordinates.get(citynum);
+            double latitude = coordinate.latitude;
+            double longitude = coordinate.longitude;
 
-            RequestQueue requestQueue = Volley.newRequestQueue(getApplicationContext());
-            location = location.replaceAll(" ", "");
-            String request = "https://maps.googleapis.com/maps/api/geocode/json?address=" + location + "&key=AIzaSyAHTmTxlkasYVxQcFNKyhxb4JEuQ5oJSn4";
-            Log.i("JSON", request);
-            final LatLng[] temp = new LatLng[1];
+            LocationData loc = new LocationData(id, location, latitude, longitude);
 
-            final String finalLocation = location;
-            JsonObjectRequest jsObjRequest = new JsonObjectRequest(Request.Method.GET, request, null, new Response.Listener<JSONObject>() {
-                @Override
-                public void onResponse(JSONObject response) {
-                    if(response != null) {
-                        Log.i("JSON", response.toString());
-                        JSONObject locationJSON;
-
-                        double latitude, longitude;
-                        try {
-                            found[0] = true;
-                            locationJSON = response.getJSONArray("results").getJSONObject(0).getJSONObject("geometry").getJSONObject("location");
-                            Log.i("JSON", locationJSON.toString());
-                            latitude = locationJSON.getDouble("lat");
-                            Log.i("JSON", latitude + "");
-                            longitude = locationJSON.getDouble("lng");
-                            Log.i("JSON", longitude + "");
-                            LatLng latlng = new LatLng(latitude, longitude);
-                            LocationData loc = new LocationData(id, finalLocation, latitude, longitude);
-                            citymap.put(finalLocation, loc); //reference to object from city string
-                            latlngmap.put(latlng, loc);
-
-
-                        } catch (JSONException e) {
-                            e.printStackTrace();
-                        }
-
-                    } else {
-                        Log.i("JSON", "Response null");
-                    }
-                }
-
-            }, new Response.ErrorListener() {
-
-                @Override
-                public void onErrorResponse(VolleyError error) {
-                    Log.e("LatLngError", error.toString());
-
-                }
-            });
-            requestQueue.add(jsObjRequest);
-
-
-
-
-
-            //create object with id, location, lat, long
-
+            citymap.put(location, loc);
+            latlngmap.put(coordinate, loc);
         }
 
 
 
-    }
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            //    ActivityCompat#requestPermissions
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for ActivityCompat#requestPermissions for more details.
-            return;
-        }
-        mLastLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
-        Log.d("MAX", "connected");
-        if (mLastLocation != null) {
-            Log.d("MAX", "" + mLastLocation.getLatitude());
-            Log.d("MAX", "" + mLastLocation.getLongitude());
-        }
-    }
-    @Override
-    public void onConnected(Bundle connectionHint) {
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            String[] permissions = {Manifest.permission.ACCESS_FINE_LOCATION};
-            ActivityCompat.requestPermissions(this, permissions, 1337);
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for ActivityCompat#requestPermissions for more details.
-            Log.d("MAX", "permission denied");
-            return;
-        }
-        mLastLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
-        Log.d("MAX", "connected");
-        if (mLastLocation != null) {
-            Log.d("MAX", "" + mLastLocation.getLatitude());
-            Log.d("MAX", "" + mLastLocation.getLongitude());
-        }
     }
 
 
@@ -859,6 +742,11 @@ public class MainActivity extends AppCompatActivity implements
         Log.d("MainActivity", "Received connection message: " + message);
     }
 
+
+    @Override
+    public void onConnected(@Nullable Bundle bundle) {
+
+    }
 
     @Override
     public void onConnectionSuspended(int i) {
