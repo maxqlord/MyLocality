@@ -4,7 +4,7 @@ android {
     buildToolsVersion '26.0.2'
     defaultConfig {
         applicationId "com.maxlord.mylocality"
-        minSdkVersion 21
+        minSdkVersion 23
         //noinspection OldTargetApi
         targetSdkVersion 25
         versionCode 1

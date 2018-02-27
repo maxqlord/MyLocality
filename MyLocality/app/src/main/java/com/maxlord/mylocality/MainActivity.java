@@ -11,6 +11,7 @@ import android.content.pm.PackageManager;
 import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
+import android.location.LocationListener;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
@@ -39,6 +40,7 @@ import com.android.volley.toolbox.Volley;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.maps.model.LatLng;
@@ -81,7 +83,7 @@ import java.util.Map;
 
 
 public class MainActivity extends AppCompatActivity implements
-        SpotifyPlayer.NotificationCallback, ConnectionStateCallback, GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener { //spotify and google interfaces
+        SpotifyPlayer.NotificationCallback, ConnectionStateCallback, com.google.android.gms.location.LocationListener, GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener { //spotify and google interfaces
 
     //spotify objects
     //spotify clientid
@@ -104,9 +106,11 @@ public class MainActivity extends AppCompatActivity implements
     private FirebaseAuth.AuthStateListener authListener;
     private FirebaseAuth auth;
     //connection to google services
-    private GoogleApiClient mGoogleApiClient;
+    private GoogleApiClient mLocationClient;
     //location of phone
     private Location mLastLocation;
+    private String mCity;
+    private String mPlaylist;
     //lists of playlist ids and cities with a playlist
     private List<String> ids, locations;
     private List<LatLng> coordinates;
@@ -117,6 +121,7 @@ public class MainActivity extends AppCompatActivity implements
     //check if spotify user is logged in
     private boolean spotifyLoggedIn;
     private FusedLocationProviderClient mFusedLocationClient;
+    private LocationRequest mLocationRequest;
 
 
     @Override
@@ -124,18 +129,88 @@ public class MainActivity extends AppCompatActivity implements
         super.onCreate(savedInstanceState);
         //load layout
         setContentView(R.layout.activity_main);
+        String[] perms = {"android.permission.ACCESS_COURSE_LOCATION", "android.permission.ACCESS_FINE_LOCATION", "android.permission.INTERNET"};
+        requestPermissions(perms, 1000);
+        try {
+            readLocationData();
+            Log.i("spotifyFlow", "File read successful");
 
+        } catch (IOException e) {
+            e.printStackTrace();
+            Log.e("spotifyFlow", "ids and cities not found");
+        }
         //if not connected to google api
-        if (mGoogleApiClient == null) {
+        if (mLocationClient == null) {
             //connect to google api
-            mGoogleApiClient = new GoogleApiClient.Builder(this)
+            mLocationClient = new GoogleApiClient.Builder(this)
                     .addConnectionCallbacks(this)
                     .addOnConnectionFailedListener(this)
                     .addApi(LocationServices.API)
                     .build();
         }
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+        mLocationRequest = LocationRequest.create();
+        mLocationRequest.setInterval(15000);  //MS
+        mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
 
+        //mLocationClient = new LocationClient(arg1, arg2 , arg3);
+        mLocationClient.connect();
+        FusedLocationProviderClient mFuseLocationClient = LocationServices.getFusedLocationProviderClient(this);
+        try {
+            mFuseLocationClient.getLastLocation().addOnSuccessListener(
+                    new OnSuccessListener<Location>() {
+                        @Override
+                        public void onSuccess(Location location) {
+
+                            if(location != null) {
+                                Log.i("location", "location not null");
+                                mLastLocation = location;
+
+                                LatLng userLatLng = new LatLng(location.getLatitude(), location.getLongitude());
+                                //find closest city to latlng
+                                String city = findClosestCity(userLatLng);
+
+                                mCity = city;
+                                Log.i("spotifyflow", city);
+                                //get playlist id of city
+                                String id = getPlaylistFromCity(city);
+                                mPlaylist = id;
+                                Log.i("spotifyflow", id);
+                                //build request
+                                String request = "https://api.spotify.com/v1/users/thesoundsofspotify/playlists/" + id;
+                                Log.i("spotifyflow", request);
+
+
+// Instantiate the RequestQueue.
+                                RequestQueue queue = Volley.newRequestQueue(getApplicationContext());
+
+// Request a string response from the provided URL.
+                                StringRequest stringRequest = new StringRequest(Request.Method.GET, request,
+                                        new Response.Listener<String>() {
+                                            @Override
+                                            public void onResponse(String response) {
+                                                // Display the request response
+                                                Log.i("request", "in response");
+                                                Log.i("spotify json", response);
+                                            }
+                                        }, new Response.ErrorListener() {
+                                    @Override
+                                    public void onErrorResponse(VolleyError error) {
+                                        Log.e("spotifyFlow", "Volley error");
+                                    }
+                                });
+// Add the request to the RequestQueue
+                                queue.add(stringRequest);
+                            }
+                            else {
+                                Log.i("location", "location null");
+                            }
+                        }
+                    }
+            );
+        } catch (SecurityException e) {
+            e.printStackTrace();
+        }
 
 
         /*
@@ -364,14 +439,7 @@ public class MainActivity extends AppCompatActivity implements
                 spotifyAuthenticate();
             }
         });
-        //maybe don't force the login
-        if (spotifyLoggedIn) {
-            Log.i("Spotify:", "Flow initiated");
-            spotifyFlow();
-        } else {
-            Log.i("Spotify:", "User logged out");
-            //spotifyAuthenticate(); don't force the login
-        }
+
 
 
         //runTest();
@@ -413,72 +481,50 @@ public class MainActivity extends AppCompatActivity implements
         AuthenticationClient.openLoginActivity(MainActivity.this, REQUEST_CODE, request);
     }
 
-    public Location getLocation() {
-        final Location[] received = new Location[1];
-        try {
-            mFusedLocationClient.getLastLocation()
-                    .addOnSuccessListener(this, new OnSuccessListener<Location>() {
-                        @Override
-                        public void onSuccess(Location location) {
-                            // Got last known location. In some rare situations this can be null.
-                            if (location != null) {
-                                // Logic to handle location object
-                                received[0] = location;
-                            }
-                        }
-                    });
-        } catch(SecurityException e) {
-                Log.i("getLocation","Location permission not given");
-            }
-        return received[0];
+    public void onLocationChanged(Location location) {
 
-    }
-
-    public void spotifyFlow() {
-        //read text file into lists
-        try {
-            readLocationData();
-            Log.i("spotifyFlow", "File read successful");
-
-        } catch (IOException e) {
-            e.printStackTrace();
-            Log.e("spotifyFlow", "ids and cities not found");
-        }
-        //get location
-        Location userLocation = getLocation();
-        Log.d(userLocation.getLatitude() + "", userLocation.getLongitude() + "");
+        Log.d(location.getLatitude() + "", location.getLongitude() + "");
         //create latlng object
-        LatLng userLatLng = new LatLng(userLocation.getLatitude(), userLocation.getLongitude());
+        LatLng userLatLng = new LatLng(location.getLatitude(), location.getLongitude());
         //find closest city to latlng
         String city = findClosestCity(userLatLng);
-        Log.d("spotifyFlow", city);
-        //get playlist id of city
-        String id = getPlaylistFromCity(city);
-        //build request
-        String request = "https://api.spotify.com/v1/users/thesoundsofspotify/playlists/" + id;
-        Log.d("spotifyflow", request);
+        if(!city.equals(mCity)) { //closest city has changed
+            mCity = city;
+            Log.i("spotifyflow", city);
+            //get playlist id of city
+            String id = getPlaylistFromCity(city);
+            mPlaylist = id;
+            Log.i("spotifyflow", id);
+            //build request
+            String request = "https://api.spotify.com/v1/users/thesoundsofspotify/playlists/" + id;
+            Log.i("spotifyflow", request);
 
 
 // Instantiate the RequestQueue.
-        RequestQueue queue = Volley.newRequestQueue(this);
+            RequestQueue queue = Volley.newRequestQueue(this);
 
 // Request a string response from the provided URL.
-        StringRequest stringRequest = new StringRequest(Request.Method.GET, request,
-                new Response.Listener<String>() {
-                    @Override
-                    public void onResponse(String response) {
-                        // Display the request response
-                        Log.i("spotify json", response);
-                    }
-                }, new Response.ErrorListener() {
-            @Override
-            public void onErrorResponse(VolleyError error) {
-                Log.e("spotifyFlow", "Volley error");
-            }
-        });
+            StringRequest stringRequest = new StringRequest(Request.Method.GET, request,
+                    new Response.Listener<String>() {
+                        @Override
+                        public void onResponse(String response) {
+                            // Display the request response
+                            Log.i("spotify json", response);
+                        }
+                    }, new Response.ErrorListener() {
+                @Override
+                public void onErrorResponse(VolleyError error) {
+                    Log.e("spotifyFlow", "Volley error");
+                }
+            });
 // Add the request to the RequestQueue.
-        queue.add(stringRequest);
+            queue.add(stringRequest);
+        }
+
+
+
     }
+
 
 
     public String findClosestCity(LatLng current) {
@@ -506,6 +552,16 @@ public class MainActivity extends AppCompatActivity implements
     public String getPlaylistFromCity(String city) {
         LocationData loc = citymap.get(city);
         return loc.getID();
+    }
+
+    public void onRequestPermissionsResult(int permsRequestCode, String[] permissions, int[] grantResults) {
+        switch(permsRequestCode) {
+            case 1000:
+                boolean coarseLocationAccepted = grantResults[0] == PackageManager.PERMISSION_GRANTED;
+                boolean fineLocationAccepted = grantResults[1] == PackageManager.PERMISSION_GRANTED;
+                boolean internet = grantResults[2] == PackageManager.PERMISSION_GRANTED;
+                break;
+        }
     }
 
     public void readLocationData() throws IOException {
@@ -594,7 +650,7 @@ public class MainActivity extends AppCompatActivity implements
 
     @Override
     public void onStart() {
-        mGoogleApiClient.connect();
+        mLocationClient.connect();
         auth.addAuthStateListener(authListener);
         super.onStart();
 
@@ -602,7 +658,7 @@ public class MainActivity extends AppCompatActivity implements
 
     @Override
     public void onStop() {
-        mGoogleApiClient.disconnect();
+        mLocationClient.disconnect();
         if (authListener != null) {
             auth.removeAuthStateListener(authListener);
         }
@@ -670,7 +726,6 @@ public class MainActivity extends AppCompatActivity implements
                         mPlayer.addConnectionStateCallback(MainActivity.this);
                         mPlayer.addNotificationCallback(MainActivity.this);
                         Log.d("onActivityResult", "spotify flow engaged");
-                        spotifyFlow();
                     }
 
                     @Override
@@ -745,7 +800,11 @@ public class MainActivity extends AppCompatActivity implements
 
     @Override
     public void onConnected(@Nullable Bundle bundle) {
-
+        try {
+            LocationServices.FusedLocationApi.requestLocationUpdates(mLocationClient, mLocationRequest, this);
+        } catch (SecurityException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
