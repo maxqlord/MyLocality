@@ -29,10 +29,12 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 //http request stuff
+import com.android.volley.AuthFailureError;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
+import com.android.volley.VolleyLog;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
@@ -177,7 +179,7 @@ public class MainActivity extends AppCompatActivity implements
                                 mPlaylist = id;
                                 Log.i("spotifyflow", id);
                                 //build request
-                                String request = "https://api.spotify.com/v1/users/thesoundsofspotify/playlists/" + id;
+                                String request = "https://api.spotify.com/v1/users/thesoundsofspotify/playlists/" + id + "/tracks";
                                 Log.i("spotifyflow", request);
 
 
@@ -185,22 +187,34 @@ public class MainActivity extends AppCompatActivity implements
                                 RequestQueue queue = Volley.newRequestQueue(getApplicationContext());
 
 // Request a string response from the provided URL.
-                                StringRequest stringRequest = new StringRequest(Request.Method.GET, request,
-                                        new Response.Listener<String>() {
-                                            @Override
-                                            public void onResponse(String response) {
-                                                // Display the request response
-                                                Log.i("request", "in response");
-                                                Log.i("spotify json", response);
-                                            }
-                                        }, new Response.ErrorListener() {
+                                JsonObjectRequest req = new JsonObjectRequest(Request.Method.GET,request,
+                                        null, new Response.Listener<JSONObject>() {
+
+                                    @Override
+                                    public void onResponse(JSONObject response) {
+                                        Log.i("request", response.toString());
+
+                                    }
+                                }, new Response.ErrorListener() {
                                     @Override
                                     public void onErrorResponse(VolleyError error) {
-                                        Log.e("spotifyFlow", "Volley error");
+                                        VolleyLog.d("request", "Error: " + error.getMessage());
                                     }
-                                });
+                                }) {
+
+                                    /**
+                                     * Passing some request headers
+                                     */
+                                    @Override
+                                    public Map<String, String> getHeaders() throws AuthFailureError {
+                                        HashMap<String, String> headers = new HashMap<String, String>();
+                                        headers.put("Accept", "application/json");
+                                        headers.put("Authorization", "Bearer BQBfIp1g9DwRJxJ4PMavFmwn7Lcf2wluuHDKUieRx9WAUEfB__dCH2F_yFEyXyVjNTdQGyrb9HP76PQIZKzdgSGBCtPWxKzL5rGzueR46Wf865MS4Fcg_Zj0KjDhE22cqkv74R_pqCMGgA4Nx3JIj_ymveOltTrBMwXkpZo");
+                                        return headers;
+                                    }
+                                };
 // Add the request to the RequestQueue
-                                queue.add(stringRequest);
+                                queue.add(req);
                             }
                             else {
                                 Log.i("location", "location null");
