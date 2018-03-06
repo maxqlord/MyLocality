@@ -76,6 +76,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 //Todo: make asset folder and test spotify flow
 //Todo: spotify account must only work for one user
@@ -115,11 +116,11 @@ public class MainActivity extends AppCompatActivity implements
     private String mPlaylist;
     //lists of playlist ids and cities with a playlist
     private List<String> ids, locations;
-    private List<LatLng> coordinates;
+    private List<Location> coordinates;
     //map a city to its locationdata object
     private Map<String, LocationData> citymap;
-    //map a latlng to its locationdata object
-    private Map<LatLng, LocationData> latlngmap;
+    //map a Location to its locationdata object
+    private Map<Location, LocationData> locationmap;
     //check if spotify user is logged in
     private boolean spotifyLoggedIn;
     private FusedLocationProviderClient mFusedLocationClient;
@@ -168,11 +169,12 @@ public class MainActivity extends AppCompatActivity implements
                                 Log.i("location", "location not null");
                                 mLastLocation = location;
 
-                                LatLng userLatLng = new LatLng(location.getLatitude(), location.getLongitude());
-                                //find closest city to latlng
-                                String city = findClosestCity(userLatLng);
 
+                                //find closest city to location
+                                String city = findClosestCity(mLastLocation);
+                                Log.i("location", "passed findClosestCity");
                                 mCity = city;
+                                Log.i("location", "passed mcity");
                                 Log.i("spotifyflow", city);
                                 //get playlist id of city
                                 String id = getPlaylistFromCity(city);
@@ -209,7 +211,7 @@ public class MainActivity extends AppCompatActivity implements
                                     public Map<String, String> getHeaders() throws AuthFailureError {
                                         HashMap<String, String> headers = new HashMap<String, String>();
                                         headers.put("Accept", "application/json");
-                                        headers.put("Authorization", "Bearer BQBfIp1g9DwRJxJ4PMavFmwn7Lcf2wluuHDKUieRx9WAUEfB__dCH2F_yFEyXyVjNTdQGyrb9HP76PQIZKzdgSGBCtPWxKzL5rGzueR46Wf865MS4Fcg_Zj0KjDhE22cqkv74R_pqCMGgA4Nx3JIj_ymveOltTrBMwXkpZo");
+                                        headers.put("Authorization", "Bearer BQDaKGmxxttze0-7ii2tTaF_ogl4RLaaBJS7b9RIbM1lmv47mAV-g1FrZXCaCt8qtFlkDsQeuxe9aGnqJijMomd8FrljZPYRfT3ECJ9WLFH9K0Kh7Dy1OZYVKrhrm2ofyr72pkSDC9pF4IHfhMMPVk6ErcP36wE_94x9yp0TvYId3Plea_YUbtnQadpgq8IEAA");
                                         return headers;
                                     }
                                 };
@@ -496,12 +498,10 @@ public class MainActivity extends AppCompatActivity implements
     }
 
     public void onLocationChanged(Location location) {
+        mLastLocation = location;
+        Log.i(location.getLatitude() + "", location.getLongitude() + "");
 
-        Log.d(location.getLatitude() + "", location.getLongitude() + "");
-        //create latlng object
-        LatLng userLatLng = new LatLng(location.getLatitude(), location.getLongitude());
-        //find closest city to latlng
-        String city = findClosestCity(userLatLng);
+        String city = findClosestCity(mLastLocation);
         if(!city.equals(mCity)) { //closest city has changed
             mCity = city;
             Log.i("spotifyflow", city);
@@ -515,24 +515,37 @@ public class MainActivity extends AppCompatActivity implements
 
 
 // Instantiate the RequestQueue.
-            RequestQueue queue = Volley.newRequestQueue(this);
+            RequestQueue queue = Volley.newRequestQueue(getApplicationContext());
 
 // Request a string response from the provided URL.
-            StringRequest stringRequest = new StringRequest(Request.Method.GET, request,
-                    new Response.Listener<String>() {
-                        @Override
-                        public void onResponse(String response) {
-                            // Display the request response
-                            Log.i("spotify json", response);
-                        }
-                    }, new Response.ErrorListener() {
+            JsonObjectRequest req = new JsonObjectRequest(Request.Method.GET,request,
+                    null, new Response.Listener<JSONObject>() {
+
+                @Override
+                public void onResponse(JSONObject response) {
+                    Log.i("request", response.toString());
+
+                }
+            }, new Response.ErrorListener() {
                 @Override
                 public void onErrorResponse(VolleyError error) {
-                    Log.e("spotifyFlow", "Volley error");
+                    VolleyLog.d("request", "Error: " + error.getMessage());
                 }
-            });
-// Add the request to the RequestQueue.
-            queue.add(stringRequest);
+            }) {
+
+                /**
+                 * Passing some request headers
+                 */
+                @Override
+                public Map<String, String> getHeaders() throws AuthFailureError {
+                    HashMap<String, String> headers = new HashMap<String, String>();
+                    headers.put("Accept", "application/json");
+                    headers.put("Authorization", "Bearer BQBfIp1g9DwRJxJ4PMavFmwn7Lcf2wluuHDKUieRx9WAUEfB__dCH2F_yFEyXyVjNTdQGyrb9HP76PQIZKzdgSGBCtPWxKzL5rGzueR46Wf865MS4Fcg_Zj0KjDhE22cqkv74R_pqCMGgA4Nx3JIj_ymveOltTrBMwXkpZo");
+                    return headers;
+                }
+            };
+// Add the request to the RequestQueue
+            queue.add(req);
         }
 
 
@@ -541,29 +554,35 @@ public class MainActivity extends AppCompatActivity implements
 
 
 
-    public String findClosestCity(LatLng current) {
+    public String findClosestCity(Location current) {
         String closest = "";
-        double closestDist = 1000000.0;
-        Location curr = new Location("Phone");
-        curr.setLatitude(current.latitude);
-        curr.setLongitude(current.longitude);
-        for ( LatLng key : latlngmap.keySet() ) {
+        double closestDist = 100000000000000.0;
+
+        for ( Location key : locationmap.keySet() ) {
             Location city = new Location("Map");
-            city.setLatitude(key.latitude);
-            city.setLongitude(key.longitude);
-            float distToCity = curr.distanceTo(city);
+            city.setLatitude(key.getLatitude());
+            city.setLongitude(key.getLongitude());
+            Log.i("Key", city.toString());
+            float distToCity = current.distanceTo(city); //meters
+            Log.i("Distance", distToCity + "");
             if(distToCity < closestDist) {
                 closestDist = distToCity;
-                closest = latlngmap.get(key).getLocation();
+                closest = locationmap.get(key).getLocation();
             }
             //System.out.println( key );
         }
-        return closest;
+        if(!closest.equals("")) {
+            Log.i("findClosestCity", closest);
+            return closest;
+        }
+        Log.i("findClosestCity", "City not found");
+        return "New York New York US";
 
 
     }
 
     public String getPlaylistFromCity(String city) {
+        Log.i("getPlaylistFromCity", city);
         LocationData loc = citymap.get(city);
         return loc.getID();
     }
@@ -583,7 +602,7 @@ public class MainActivity extends AppCompatActivity implements
         locations = new ArrayList<>();
         coordinates = new ArrayList<>();
         citymap = new HashMap<>();
-        latlngmap = new HashMap<>();
+        locationmap = new HashMap<>();
 
         //playlist ids
         try (BufferedReader br = new BufferedReader(new InputStreamReader(getAssets().open("PlaylistIDs")))) {
@@ -617,7 +636,9 @@ public class MainActivity extends AppCompatActivity implements
                 int end = line.indexOf("#");
                 double latitude = Double.parseDouble(line.substring(0, comma));
                 double longitude = Double.parseDouble(line.substring(comma+1, end));
-                LatLng coordinate = new LatLng(latitude, longitude);
+                Location coordinate = new Location("text");
+                coordinate.setLongitude(longitude);
+                coordinate.setLatitude(latitude);
                 coordinates.add(coordinate);
                 line = br.readLine();
             }
@@ -635,14 +656,14 @@ public class MainActivity extends AppCompatActivity implements
 
             String id = ids.get(citynum);
             String location = locations.get(citynum);
-            LatLng coordinate = coordinates.get(citynum);
-            double latitude = coordinate.latitude;
-            double longitude = coordinate.longitude;
+            Location coordinate = coordinates.get(citynum);
+            double latitude = coordinate.getLatitude();
+            double longitude = coordinate.getLongitude();
 
             LocationData loc = new LocationData(id, location, latitude, longitude);
 
             citymap.put(location, loc);
-            latlngmap.put(coordinate, loc);
+            locationmap.put(coordinate, loc);
         }
 
 
@@ -739,7 +760,7 @@ public class MainActivity extends AppCompatActivity implements
                         mPlayer = spotifyPlayer;
                         mPlayer.addConnectionStateCallback(MainActivity.this);
                         mPlayer.addNotificationCallback(MainActivity.this);
-                        Log.d("onActivityResult", "spotify flow engaged");
+                        Log.i("onActivityResult", "spotify flow engaged");
                     }
 
                     @Override
@@ -759,7 +780,7 @@ public class MainActivity extends AppCompatActivity implements
 
     @Override
     public void onPlaybackEvent(PlayerEvent playerEvent) {
-        Log.d("MainActivity", "Playback event received: " + playerEvent.name());
+        Log.i("MainActivity", "Playback event received: " + playerEvent.name());
         switch (playerEvent) {
             // Handle event type as necessary
             default:
@@ -769,7 +790,7 @@ public class MainActivity extends AppCompatActivity implements
 
     @Override
     public void onPlaybackError(Error error) {
-        Log.d("MainActivity", "Playback error received: " + error.name());
+        Log.i("MainActivity", "Playback error received: " + error.name());
         switch (error) {
             // Handle error type as necessary
             default:
@@ -779,7 +800,7 @@ public class MainActivity extends AppCompatActivity implements
 
     @Override
     public void onLoggedIn() {
-        Log.d("MainActivity", "User logged in");
+        Log.i("MainActivity", "User logged in");
         spotifyauth.setText(R.string.signoutspotify);
         spotifyLoggedIn = true;
         //mPlayer.playUri(null, "spotify:track:7rdUtXasA973gmrr2Xxh3E", 0, 0); //play spotify track with given URI on login
@@ -787,7 +808,7 @@ public class MainActivity extends AppCompatActivity implements
 
     @Override
     public void onLoggedOut() {
-        Log.d("MainActivity", "User logged out");
+        Log.i("MainActivity", "User logged out");
     }
 /*  SPOTIFY HAS SWITCHED PARAMETER FROM INT TO ERROR
     @Override
@@ -798,17 +819,17 @@ public class MainActivity extends AppCompatActivity implements
 
     @Override
     public void onLoginFailed(Error error) {
-        Log.d("MainActivity", "Login failed- error");
+        Log.i("MainActivity", "Login failed- error");
     }
 
     @Override
     public void onTemporaryError() {
-        Log.d("MainActivity", "Temporary error occurred");
+        Log.i("MainActivity", "Temporary error occurred");
     }
 
     @Override
     public void onConnectionMessage(String message) {
-        Log.d("MainActivity", "Received connection message: " + message);
+        Log.i("MainActivity", "Received connection message: " + message);
     }
 
 
