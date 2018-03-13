@@ -63,6 +63,7 @@ import com.spotify.sdk.android.player.PlayerEvent;
 import com.spotify.sdk.android.player.Spotify;
 import com.spotify.sdk.android.player.SpotifyPlayer;
 //java objects
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -194,7 +195,17 @@ public class MainActivity extends AppCompatActivity implements
 
                                     @Override
                                     public void onResponse(JSONObject response) {
-                                        Log.i("request", response.toString());
+                                        try {
+
+                                            String id = response.getJSONArray("items").getJSONObject(0).getJSONObject("track").getString("id");
+                                            Log.i("TEST", id);
+                                            playSong(id);
+                                        } catch (JSONException e) {
+                                            e.printStackTrace();
+                                        }
+
+                                        //items[{}{}{}]
+                                        //items[0]["track"].getstring("id")
 
                                     }
                                 }, new Response.ErrorListener() {
@@ -803,7 +814,11 @@ public class MainActivity extends AppCompatActivity implements
         Log.i("MainActivity", "User logged in");
         spotifyauth.setText(R.string.signoutspotify);
         spotifyLoggedIn = true;
-        //mPlayer.playUri(null, "spotify:track:7rdUtXasA973gmrr2Xxh3E", 0, 0); //play spotify track with given URI on login
+
+    }
+
+    public void playSong(String id) {
+        mPlayer.playUri(null, "spotify:track:"+id, 0, 0); //play spotify track with given URI
     }
 
     @Override
