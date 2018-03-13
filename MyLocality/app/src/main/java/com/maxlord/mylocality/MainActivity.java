@@ -153,7 +153,7 @@ public class MainActivity extends AppCompatActivity implements
         }
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
         mLocationRequest = LocationRequest.create();
-        mLocationRequest.setInterval(15000);  //MS
+        mLocationRequest.setInterval(150000);  //MS
         mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
 
         //mLocationClient = new LocationClient(arg1, arg2 , arg3);
@@ -211,7 +211,7 @@ public class MainActivity extends AppCompatActivity implements
                                     public Map<String, String> getHeaders() throws AuthFailureError {
                                         HashMap<String, String> headers = new HashMap<String, String>();
                                         headers.put("Accept", "application/json");
-                                        headers.put("Authorization", "Bearer BQDaKGmxxttze0-7ii2tTaF_ogl4RLaaBJS7b9RIbM1lmv47mAV-g1FrZXCaCt8qtFlkDsQeuxe9aGnqJijMomd8FrljZPYRfT3ECJ9WLFH9K0Kh7Dy1OZYVKrhrm2ofyr72pkSDC9pF4IHfhMMPVk6ErcP36wE_94x9yp0TvYId3Plea_YUbtnQadpgq8IEAA");
+                                        headers.put("Authorization", "Bearer BQCA_Ao4GUsfcR9Z0aOGHRGpD5DwiGpw_Q5vqms31tW7HJkMnbOkUX3o1PCP3NYep_uESVZyvjPlFa7t5dOwpkDWVZs7LOa-L9XVmU4NkIRRXOJUCvt0fjBuWUrRFqB340WORTdkApzcO69iYbK1lnYrjdmu6A");
                                         return headers;
                                     }
                                 };
