@@ -616,7 +616,7 @@ public class MainActivity extends AppCompatActivity implements
         locationmap = new HashMap<>();
 
         //playlist ids
-        try (BufferedReader br = new BufferedReader(new InputStreamReader(getAssets().open("PlaylistIDs")))) {
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(getAssets().open("Data/PlaylistIDs")))) {
             String line = br.readLine();
             while (line != null) {
                 ids.add(line);
@@ -628,7 +628,7 @@ public class MainActivity extends AppCompatActivity implements
         }
         //locations
 
-        try (BufferedReader br2 = new BufferedReader(new InputStreamReader(getAssets().open("Cities")))) {
+        try (BufferedReader br2 = new BufferedReader(new InputStreamReader(getAssets().open("Data/Cities")))) {
             String line = br2.readLine();
 
             while (line != null) {
@@ -640,7 +640,7 @@ public class MainActivity extends AppCompatActivity implements
             e.printStackTrace();
         }
         //coordinates
-        try (BufferedReader br = new BufferedReader(new InputStreamReader(getAssets().open("coordinates.txt")))) {
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(getAssets().open("Data/coordinates.txt")))) {
             String line = br.readLine();
             while (line != null) {
                 int comma = line.indexOf(",");
