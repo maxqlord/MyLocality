@@ -91,7 +91,7 @@ public class MainActivity extends AppCompatActivity implements
 
     //spotify objects
     //spotify clientid
-    private static final String CLIENT_ID = "5eea0338e20a487d844c55d357b4e684";
+    private static final String CLIENT_ID = "<CLIENT-ID-HERE>";
     //redirect for spotify connection
     private static final String REDIRECT_URI = "mylocality-auth.com://callback";
     //private static final int MY_PERMISSIONS_REQUEST_LOCATION = 2109;
@@ -222,7 +222,7 @@ public class MainActivity extends AppCompatActivity implements
                                     public Map<String, String> getHeaders() throws AuthFailureError {
                                         HashMap<String, String> headers = new HashMap<String, String>();
                                         headers.put("Accept", "application/json");
-                                        headers.put("Authorization", "Bearer BQCA_Ao4GUsfcR9Z0aOGHRGpD5DwiGpw_Q5vqms31tW7HJkMnbOkUX3o1PCP3NYep_uESVZyvjPlFa7t5dOwpkDWVZs7LOa-L9XVmU4NkIRRXOJUCvt0fjBuWUrRFqB340WORTdkApzcO69iYbK1lnYrjdmu6A");
+                                        headers.put("Authorization", "<Volley Auth Key Here>");
                                         return headers;
                                     }
                                 };
@@ -551,7 +551,7 @@ public class MainActivity extends AppCompatActivity implements
                 public Map<String, String> getHeaders() throws AuthFailureError {
                     HashMap<String, String> headers = new HashMap<String, String>();
                     headers.put("Accept", "application/json");
-                    headers.put("Authorization", "Bearer BQBfIp1g9DwRJxJ4PMavFmwn7Lcf2wluuHDKUieRx9WAUEfB__dCH2F_yFEyXyVjNTdQGyrb9HP76PQIZKzdgSGBCtPWxKzL5rGzueR46Wf865MS4Fcg_Zj0KjDhE22cqkv74R_pqCMGgA4Nx3JIj_ymveOltTrBMwXkpZo");
+                    headers.put("Authorization", "<Volley Auth Key here>");
                     return headers;
                 }
             };
